@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brankas Akun Game & Gmail</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- CryptoJS untuk Enkripsi AES & Hashing SHA256 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <style>
+        /* Kustomisasi Scrollbar Tema Terang */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #22c55e;
+        }
+        
+        /* Animasi Transisi & Toast */
+        .toast-enter {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+        .toast-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toast-exit {
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Sembunyikan scrollbar untuk tab filter di perangkat mobile */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Efek klik halus untuk tombol */
+        .btn-click:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen font-sans selection:bg-green-500 selection:text-white transition-colors duration-300">
+
+    <!-- ================= AUTH VIEW (LOGIN / REGISTER) ================= -->
+    <div id="authView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-gray-100">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 w-full max-w-md fade-in relative overflow-hidden">
+            <!-- Hiasan Background -->
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-green-500 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-500 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
+
+            <div class="text-center mb-8 relative z-10">
+                <div class="bg-green-100 p-3 rounded-xl inline-block mb-3">
+                    <i data-lucide="shield-check" class="text-green-600 w-8 h-8"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-wide">Brankas<span class="font-light text-green-600">Akun</span></h1>
+                <p class="text-gray-500 text-sm mt-1" id="authSubtitle">Masuk dengan Master Password Anda</p>
+            </div>
+
+            <form id="authForm" class="space-y-5 relative z-10">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                    <div class="relative">
+                        <i data-lucide="mail" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                        <input type="email" id="authEmail" required placeholder="email@anda.com" 
+                            class="w-full bg-gray-50 border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Master Password</label>
+                    <div class="relative">
+                        <i data-lucide="key" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                        <input type="password" id="authPassword" required placeholder="Kata sandi utama Anda" 
+                            class="w-full bg-gray-50 border border-gray-300 rounded-lg pl-10 pr-10 py-3 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all">
+                        <button type="button" id="toggleAuthPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors">
+                            <i data-lucide="eye" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-1.5"><i data-lucide="info" class="w-3 h-3 inline"></i> Master Password digunakan untuk mengenkripsi brankas Anda.</p>
+                </div>
+
+                <button type="submit" id="authSubmitBtn" class="w-full btn-click bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-5 h-5"></i>
+                    <span>Masuk</span>
+                </button>
+
+                <div class="text-center mt-4 text-sm text-gray-600">
+                    <span id="authToggleText">Belum punya brankas?</span>
+                    <button type="button" id="toggleAuthModeBtn" class="text-green-600 font-semibold hover:underline transition-all">Daftar sekarang</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= APP VIEW (MAIN DASHBOARD) ================= -->
+    <div id="appView" class="hidden min-h-screen flex-col">
+        <!-- Navbar Hijau -->
+        <nav class="bg-gradient-to-r from-green-600 to-green-500 shadow-md sticky top-0 z-20 transition-all duration-300">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col sm:flex-row items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-3 sm:gap-0">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white p-2 rounded-lg shadow-sm hover:scale-105 transition-transform">
+                            <i data-lucide="shield-check" class="text-green-600 w-6 h-6"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-white tracking-wide">Brankas<span class="font-light text-green-100">Akun</span></h1>
+                    </div>
+                    <div class="flex items-center gap-4 w-full sm:w-auto">
+                        <div class="relative w-full">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-100 w-4 h-4 transition-colors peer-focus:text-gray-400"></i>
+                            <input type="text" id="searchInput" placeholder="Cari akun..." 
+                                class="peer bg-white/20 border border-white/30 text-sm text-white placeholder-green-100 rounded-full pl-10 pr-4 py-2 focus:outline-none focus:bg-white focus:text-gray-800 focus:placeholder-gray-400 transition-all w-full sm:w-64 shadow-inner">
+                        </div>
+                        <button id="logoutBtn" class="btn-click text-white hover:text-red-200 bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all" title="Keluar">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Peringatan Keamanan -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 fade-in">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-shadow">
+                <i data-lucide="lock" class="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                <div class="text-sm text-blue-800">
+                    <strong class="font-semibold block mb-1">Brankas Terenkripsi Aman</strong>
+                    Semua data kata sandi di bawah ini dienkripsi dengan standar AES menggunakan Master Password Anda. Data tersimpan secara lokal dan persisten di browser ini.
+                </div>
+            </div>
+        </div>
+
+        <!-- Konten Utama (Layout Atas-Bawah) -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8 flex-grow">
+            
+            <!-- Panel Form Tambah Akun -->
+            <section class="bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-200 overflow-hidden transition-all duration-300 fade-in">
+                <div class="bg-green-50/50 border-b border-gray-200 px-6 py-4 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-green-600"></i>
+                    <h2 class="text-lg font-semibold text-gray-800">Tambah Akun Baru</h2>
+                </div>
+                
+                <form id="accountForm" class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        
+                        <!-- Baris 1 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1.5">Jenis Akun</label>
+                            <select id="accType" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all hover:border-green-400">
+                                <option value="Game">🎮 Akun Game</option>
+                                <option value="Gmail">📧 Akun Gmail</option>
+                                <option value="Lainnya">📦 Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1.5">Nama Platform / Game</label>
+                            <input type="text" id="accPlatform" required placeholder="Contoh: Mobile Legends, Steam, dll" 
+                                class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 placeholder-gray-400 transition-all hover:border-green-400">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1.5">Username / Email</label>
+                            <input type="text" id="accUsername" required placeholder="Masukkan username/email" 
+                                class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 placeholder-gray-400 transition-all hover:border-green-400">
+                        </div>
+
+                        <!-- Baris 2 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1.5">Kata Sandi</label>
+                            <div class="relative group">
+                                <input type="password" id="accPassword" required placeholder="Masukkan kata sandi" 
+                                    class="w-full bg-gray-50 border border-gray-300 rounded-lg pl-4 pr-10 py-2.5 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 placeholder-gray-400 transition-all hover:border-green-400">
+                                <button type="button" id="toggleFormPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors">
+                                    <i data-lucide="eye" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-600 mb-1.5">Catatan Tambahan (Opsional)</label>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <input type="text" id="accNotes" placeholder="Server, ID Karakter, dll..." 
+                                    class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 placeholder-gray-400 transition-all hover:border-green-400">
+                                
+                                <button type="submit" class="w-full sm:w-auto btn-click whitespace-nowrap bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i>
+                                    Simpan Akun
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+            </section>
+
+            <!-- Panel Daftar Akun -->
+            <section class="fade-in" style="animation-delay: 0.1s;">
+                <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-200">
+                    <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                        <i data-lucide="layers" class="w-5 h-5 text-green-500"></i>
+                        Daftar Akun Tersimpan
+                    </h2>
+                    <span id="accountCount" class="bg-green-100 text-green-700 text-sm font-semibold px-3 py-1 rounded-full border border-green-200 shadow-sm transition-all duration-300 hover:scale-105">0 Total Akun</span>
+                </div>
+
+                <!-- Filter Kategori / Tab -->
+                <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 sm:overflow-visible sm:pb-0 hide-scrollbar">
+                    <button onclick="setFilter('Semua')" id="filter-Semua" class="btn-click whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-green-600 text-white shadow-sm hover:-translate-y-0.5">Semua</button>
+                    <button onclick="setFilter('Game')" id="filter-Game" class="btn-click whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-green-600 hover:-translate-y-0.5 hover:shadow-sm">Akun Game</button>
+                    <button onclick="setFilter('Gmail')" id="filter-Gmail" class="btn-click whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-green-600 hover:-translate-y-0.5 hover:shadow-sm">Akun Gmail</button>
+                    <button onclick="setFilter('Lainnya')" id="filter-Lainnya" class="btn-click whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-green-600 hover:-translate-y-0.5 hover:shadow-sm">Lainnya</button>
+                </div>
+
+                <!-- Kontainer Kategori Game -->
+                <div id="sectionGame" class="mb-8 hidden transition-all duration-300">
+                    <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
+                        <i data-lucide="gamepad-2" class="w-5 h-5 text-green-600"></i>
+                        <h3 class="text-lg font-semibold text-gray-800">Akun Game</h3>
+                        <span id="countGame" class="ml-2 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="containerGame" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                </div>
+
+                <!-- Kontainer Kategori Gmail -->
+                <div id="sectionGmail" class="mb-8 hidden transition-all duration-300">
+                    <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
+                        <i data-lucide="mail" class="w-5 h-5 text-red-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-800">Akun Gmail</h3>
+                        <span id="countGmail" class="ml-2 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="containerGmail" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                </div>
+
+                <!-- Kontainer Kategori Lainnya -->
+                <div id="sectionLainnya" class="mb-4 hidden transition-all duration-300">
+                    <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
+                        <i data-lucide="box" class="w-5 h-5 text-blue-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-800">Akun Lainnya</h3>
+                        <span id="countLainnya" class="ml-2 bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="containerLainnya" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                </div>
+                
+                <!-- State Kosong -->
+                <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-300 rounded-2xl bg-white transition-all duration-300 hover:border-green-300 hover:bg-green-50/30">
+                    <div class="bg-gray-50 p-5 rounded-full mb-4 border border-gray-100 shadow-sm transition-transform duration-300 hover:scale-110">
+                        <i data-lucide="inbox" class="w-12 h-12 text-gray-400"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-1">Belum ada akun tersimpan</h3>
+                    <p class="text-gray-500 text-sm max-w-sm">Silakan tambahkan data akun Game atau Gmail Anda melalui formulir di atas.</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Wadah Toast Notifikasi -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- JavaScript Logika Utama -->
+    <script>
+        // Inisialisasi ikon Lucide
+        lucide.createIcons();
+
+        // Variabel Global
+        const USERS_DB_KEY = 'BRANKAS_USERS_DB';
+        const SESSION_KEY = 'BRANKAS_SESSION';
+        
+        let currentUserEmail = null;
+        let masterPasswordKey = null; // Key untuk dekripsi
+        let accounts = [];
+        let currentFilter = 'Semua';
+
+        // Elemen DOM (Auth)
+        const authView = document.getElementById('authView');
+        const appView = document.getElementById('appView');
+        const authForm = document.getElementById('authForm');
+        const authEmail = document.getElementById('authEmail');
+        const authPassword = document.getElementById('authPassword');
+        const toggleAuthPassword = document.getElementById('toggleAuthPassword');
+        const toggleAuthModeBtn = document.getElementById('toggleAuthModeBtn');
+        const authSubmitBtn = document.getElementById('authSubmitBtn');
+        const authSubtitle = document.getElementById('authSubtitle');
+        const authToggleText = document.getElementById('authToggleText');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        let isLoginMode = true;
+
+        // Elemen DOM (App)
+        const form = document.getElementById('accountForm');
+        const sectionGame = document.getElementById('sectionGame');
+        const containerGame = document.getElementById('containerGame');
+        const countGame = document.getElementById('countGame');
+        const sectionGmail = document.getElementById('sectionGmail');
+        const containerGmail = document.getElementById('containerGmail');
+        const countGmail = document.getElementById('countGmail');
+        const sectionLainnya = document.getElementById('sectionLainnya');
+        const containerLainnya = document.getElementById('containerLainnya');
+        const countLainnya = document.getElementById('countLainnya');
+        const emptyState = document.getElementById('emptyState');
+        const countBadge = document.getElementById('accountCount');
+        const searchInput = document.getElementById('searchInput');
+        const toggleFormPwdBtn = document.getElementById('toggleFormPassword');
+        const formPwdInput = document.getElementById('accPassword');
+
+        // ================= SISTEM AUTH & ENKRIPSI =================
+
+        // Helper: Hash & AES Encryption
+        function hash(text) {
+            return CryptoJS.SHA256(text).toString();
+        }
+        
+        function encrypt(dataObj, key) {
+            return CryptoJS.AES.encrypt(JSON.stringify(dataObj), key).toString();
+        }
+
+        function decrypt(ciphertext, key) {
+            try {
+                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+                const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+                return decryptedStr ? JSON.parse(decryptedStr) : [];
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Ambil DB User dari LocalStorage
+        function getUsersDB() {
+            return JSON.parse(localStorage.getItem(USERS_DB_KEY) || '{}');
+        }
+
+        function saveUsersDB(db) {
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+        }
+
+        // Toggle Form Auth (Login <-> Register)
+        toggleAuthModeBtn.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            if (isLoginMode) {
+                authSubtitle.textContent = "Masuk dengan Master Password Anda";
+                authSubmitBtn.innerHTML = '<i data-lucide="log-in" class="w-5 h-5"></i><span>Masuk</span>';
+                authToggleText.textContent = "Belum punya brankas?";
+                toggleAuthModeBtn.textContent = "Daftar sekarang";
+            } else {
+                authSubtitle.textContent = "Buat akun & atur Master Password Anda";
+                authSubmitBtn.innerHTML = '<i data-lucide="user-plus" class="w-5 h-5"></i><span>Buat Brankas</span>';
+                authToggleText.textContent = "Sudah punya brankas?";
+                toggleAuthModeBtn.textContent = "Masuk di sini";
+            }
+            lucide.createIcons();
+        });
+
+        // Toggle Show/Hide Auth Password
+        toggleAuthPassword.addEventListener('click', () => {
+            const type = authPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+            authPassword.setAttribute('type', type);
+            toggleAuthPassword.innerHTML = type === 'password' 
+                ? '<i data-lucide="eye" class="w-5 h-5"></i>' 
+                : '<i data-lucide="eye-off" class="w-5 h-5"></i>';
+            lucide.createIcons();
+        });
+
+        // Handle Register / Login Form
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = authEmail.value.trim().toLowerCase();
+            const password = authPassword.value;
+            const db = getUsersDB();
+
+            if (isLoginMode) {
+                // Proses Login
+                if (db[email] && db[email].passwordHash === hash(password)) {
+                    loginSuccess(email, password);
+                } else {
+                    showToast('Email atau Master Password salah!', 'error');
+                }
+            } else {
+                // Proses Register
+                if (db[email]) {
+                    showToast('Email ini sudah memiliki brankas!', 'error');
+                } else {
+                    db[email] = {
+                        passwordHash: hash(password),
+                        vaultData: encrypt([], password) // Buat brankas kosong terenkripsi
+                    };
+                    saveUsersDB(db);
+                    showToast('Brankas berhasil dibuat! Memasukkan Anda...');
+                    loginSuccess(email, password);
+                }
+            }
+        });
+
+        // Sukses Login (Set Sesi Persisten)
+        function loginSuccess(email, password) {
+            currentUserEmail = email;
+            masterPasswordKey = password;
+            
+            // Simpan sesi di localStorage agar tidak hilang saat refresh/tutup
+            // Catatan Keamanan: Di web asli, menyimpan key murni di localStorage rentan XSS.
+            // Namun untuk simulasi web tunggal ini, memenuhi syarat "Data tidak hilang saat ditutup".
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ email: email, key: password }));
+            
+            authForm.reset();
+            switchToAppView();
+            loadVaultData();
+        }
+
+        // Cek Sesi Tersimpan saat pertama kali dimuat
+        function checkPersistedSession() {
+            const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+            if (session && session.email && session.key) {
+                currentUserEmail = session.email;
+                masterPasswordKey = session.key;
+                switchToAppView();
+                loadVaultData();
+            }
+        }
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            // Animasi halus saat logout
+            appView.classList.add('opacity-0');
+            setTimeout(() => {
+                localStorage.removeItem(SESSION_KEY);
+                currentUserEmail = null;
+                masterPasswordKey = null;
+                accounts = [];
+                
+                appView.classList.add('hidden');
+                appView.classList.remove('flex', 'opacity-0');
+                
+                authView.classList.remove('hidden');
+                authView.classList.add('flex');
+                showToast('Berhasil mengunci dan keluar brankas.');
+            }, 300);
+        });
+
+        // Transisi Tampilan
+        function switchToAppView() {
+            authView.classList.add('hidden');
+            authView.classList.remove('flex');
+            
+            appView.classList.remove('hidden');
+            appView.classList.add('flex', 'opacity-0');
+            
+            // Animasi fade in
+            setTimeout(() => {
+                appView.classList.remove('opacity-0');
+            }, 50);
+            lucide.createIcons();
+        }
+
+
+        // ================= SISTEM BRANKAS (APP) =================
+
+        // Load Data Terenkripsi
+        function loadVaultData() {
+            const db = getUsersDB();
+            if (db[currentUserEmail]) {
+                const decryptedData = decrypt(db[currentUserEmail].vaultData, masterPasswordKey);
+                if (decryptedData !== null) {
+                    accounts = decryptedData;
+                    renderAccounts();
+                } else {
+                    showToast('Gagal mendekripsi brankas. Kunci rusak.', 'error');
+                }
+            }
+        }
+
+        // Save & Enkripsi Data
+        function saveVaultData() {
+            const db = getUsersDB();
+            if (db[currentUserEmail]) {
+                db[currentUserEmail].vaultData = encrypt(accounts, masterPasswordKey);
+                saveUsersDB(db);
+            }
+        }
+
+        // Toggle Visibilitas Password di Form Tambah Akun
+        toggleFormPwdBtn.addEventListener('click', () => {
+            const type = formPwdInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            formPwdInput.setAttribute('type', type);
+            toggleFormPwdBtn.innerHTML = type === 'password' 
+                ? '<i data-lucide="eye" class="w-5 h-5"></i>' 
+                : '<i data-lucide="eye-off" class="w-5 h-5"></i>';
+            lucide.createIcons();
+        });
+
+        // Fungsi membuat Toast Notifikasi
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-500';
+            const icon = type === 'success' ? 'check-circle' : 'info';
+            
+            toast.className = `toast-enter ${bgColor} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[250px] font-medium text-sm border border-white/20 backdrop-blur-sm`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-5 h-5"></i>
+                <span>${message}</span>
+            `;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-enter-active');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('toast-enter-active');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Fungsi Salin ke Clipboard
+        function copyToClipboard(text, label) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(`${label} berhasil disalin!`);
+                });
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast(`${label} berhasil disalin!`);
+                } catch (err) {
+                    showToast(`Gagal menyalin teks`, 'error');
+                }
+                textArea.remove();
+            }
+        }
+
+        // Toggle Password pada Kartu List
+        function toggleCardPassword(id) {
+            const input = document.getElementById(`pwd-${id}`);
+            const btn = document.getElementById(`btn-pwd-${id}`);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerHTML = '<i data-lucide="eye-off" class="w-4 h-4 text-green-600"></i>';
+            } else {
+                input.type = 'password';
+                btn.innerHTML = '<i data-lucide="eye" class="w-4 h-4 text-gray-400 group-hover:text-green-600"></i>';
+            }
+            lucide.createIcons();
+        }
+
+        // Hapus Akun
+        function deleteAccount(id) {
+            if(confirm("Apakah Anda yakin ingin menghapus akun ini secara permanen?")) {
+                accounts = accounts.filter(acc => acc.id !== id);
+                saveVaultData();
+                renderAccounts(searchInput.value);
+                showToast('Akun berhasil dihapus', 'error');
+            }
+        }
+
+        // Set Filter Kategori (Tombol Tab)
+        function setFilter(type) {
+            currentFilter = type;
+            
+            const filters = ['Semua', 'Game', 'Gmail', 'Lainnya'];
+            filters.forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (f === currentFilter) {
+                    btn.className = 'btn-click whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-green-600 text-white shadow-sm hover:-translate-y-0.5';
+                } else {
+                    btn.className = 'btn-click whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-green-600 hover:-translate-y-0.5 hover:shadow-sm';
+                }
+            });
+            
+            renderAccounts(searchInput.value);
+        }
+
+        // Fungsi membuat elemen kartu (Card)
+        function createCardElement(acc) {
+            let iconName = 'box';
+            let iconColor = 'text-blue-500';
+            let bgIconColor = 'bg-blue-50';
+
+            if (acc.type === 'Game') {
+                iconName = 'gamepad-2';
+                iconColor = 'text-green-600';
+                bgIconColor = 'bg-green-100';
+            } else if (acc.type === 'Gmail') {
+                iconName = 'mail';
+                iconColor = 'text-red-500';
+                bgIconColor = 'bg-red-50';
+            }
+
+            const card = document.createElement('div');
+            // Tampilan Kartu Terang dengan animasi hover (translate dan shadow)
+            card.className = 'bg-white border border-gray-200 rounded-xl p-5 hover:border-green-400 transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col relative group';
+            
+            card.innerHTML = `
+                <!-- Header Kartu -->
+                <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="${bgIconColor} p-2.5 rounded-lg border border-gray-100 transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110">
+                            <i data-lucide="${iconName}" class="${iconColor} w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800 leading-tight truncate w-32 sm:w-40" title="${acc.platform}">${acc.platform}</h3>
+                            <span class="text-xs text-gray-500 font-medium">${acc.type}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteAccount('${acc.id}')" class="btn-click text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100" title="Hapus Akun">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Body Kartu -->
+                <div class="space-y-3 flex-grow">
+                    <!-- Username -->
+                    <div>
+                        <p class="text-[11px] font-semibold text-gray-400 mb-1 uppercase tracking-wider">Username / Email</p>
+                        <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2 border border-gray-200 hover:border-green-300 transition-colors">
+                            <span class="text-sm text-gray-800 truncate pr-2 font-medium">${acc.username}</span>
+                            <button onclick="copyToClipboard('${acc.username}', 'Username')" class="btn-click text-gray-400 hover:text-green-600 p-1.5 hover:bg-green-100 rounded transition-colors group/copy" title="Salin Username">
+                                <i data-lucide="copy" class="w-4 h-4 group-hover/copy:scale-110 transition-transform"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div>
+                        <p class="text-[11px] font-semibold text-gray-400 mb-1 uppercase tracking-wider">Kata Sandi</p>
+                        <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2 border border-gray-200 hover:border-green-300 transition-colors">
+                            <input type="password" id="pwd-${acc.id}" value="${acc.password}" readonly class="bg-transparent border-none outline-none text-sm text-gray-800 w-full pr-2 select-all focus:ring-0 cursor-text font-medium">
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button id="btn-pwd-${acc.id}" onclick="toggleCardPassword('${acc.id}')" class="btn-click text-gray-400 hover:text-green-600 p-1.5 hover:bg-green-100 rounded transition-colors group/eye" title="Lihat Sandi">
+                                    <i data-lucide="eye" class="w-4 h-4 group-hover/eye:scale-110 transition-transform"></i>
+                                </button>
+                                <button onclick="copyToClipboard('${acc.password}', 'Kata Sandi')" class="btn-click text-gray-400 hover:text-green-600 p-1.5 hover:bg-green-100 rounded transition-colors group/copy" title="Salin Sandi">
+                                    <i data-lucide="copy" class="w-4 h-4 group-hover/copy:scale-110 transition-transform"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    ${acc.notes ? `
+                    <div class="mt-3 bg-green-50/50 p-2.5 rounded-lg border border-green-100 transition-colors group-hover:bg-green-50">
+                        <p class="text-xs text-gray-600 italic break-words leading-relaxed">
+                            <i data-lucide="sticky-note" class="w-3 h-3 inline mr-1 text-green-600 relative -top-0.5"></i>
+                            ${acc.notes}
+                        </p>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            return card;
+        }
+
+        // Render Data ke UI
+        function renderAccounts(filterText = '') {
+            containerGame.innerHTML = '';
+            containerGmail.innerHTML = '';
+            containerLainnya.innerHTML = '';
+            
+            const searchFiltered = accounts.filter(acc => 
+                acc.platform.toLowerCase().includes(filterText.toLowerCase()) || 
+                acc.username.toLowerCase().includes(filterText.toLowerCase()) ||
+                acc.type.toLowerCase().includes(filterText.toLowerCase())
+            );
+
+            countBadge.textContent = `${searchFiltered.length} Total Akun`;
+
+            const games = searchFiltered.filter(acc => acc.type === 'Game');
+            const gmails = searchFiltered.filter(acc => acc.type === 'Gmail');
+            const lainnya = searchFiltered.filter(acc => acc.type === 'Lainnya');
+
+            const showGame = (currentFilter === 'Semua' || currentFilter === 'Game') && games.length > 0;
+            const showGmail = (currentFilter === 'Semua' || currentFilter === 'Gmail') && gmails.length > 0;
+            const showLainnya = (currentFilter === 'Semua' || currentFilter === 'Lainnya') && lainnya.length > 0;
+
+            if (!showGame && !showGmail && !showLainnya) {
+                sectionGame.classList.add('hidden');
+                sectionGmail.classList.add('hidden');
+                sectionLainnya.classList.add('hidden');
+                
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex', 'fade-in');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex', 'fade-in');
+
+                if (showGame) {
+                    sectionGame.classList.remove('hidden');
+                    countGame.textContent = games.length;
+                    games.forEach(acc => containerGame.appendChild(createCardElement(acc)));
+                } else {
+                    sectionGame.classList.add('hidden');
+                }
+
+                if (showGmail) {
+                    sectionGmail.classList.remove('hidden');
+                    countGmail.textContent = gmails.length;
+                    gmails.forEach(acc => containerGmail.appendChild(createCardElement(acc)));
+                } else {
+                    sectionGmail.classList.add('hidden');
+                }
+
+                if (showLainnya) {
+                    sectionLainnya.classList.remove('hidden');
+                    countLainnya.textContent = lainnya.length;
+                    lainnya.forEach(acc => containerLainnya.appendChild(createCardElement(acc)));
+                } else {
+                    sectionLainnya.classList.add('hidden');
+                }
+
+                lucide.createIcons();
+            }
+        }
+
+        // Tangani Submit Form (Tambah Akun)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const newAccount = {
+                id: 'id_' + Date.now() + Math.random().toString(36).substr(2, 9),
+                type: document.getElementById('accType').value,
+                platform: document.getElementById('accPlatform').value,
+                username: document.getElementById('accUsername').value,
+                password: document.getElementById('accPassword').value,
+                notes: document.getElementById('accNotes').value,
+                createdAt: new Date().toISOString()
+            };
+
+            accounts.unshift(newAccount);
+            saveVaultData(); // Simpan & Enkripsi data baru
+            renderAccounts(searchInput.value);
+            
+            form.reset();
+            if (formPwdInput.type === 'text') {
+                toggleFormPwdBtn.click();
+            }
+            
+            showToast('Akun berhasil ditambahkan dan dienkripsi!');
+        });
+
+        // Tangani Pencarian
+        searchInput.addEventListener('input', (e) => {
+            renderAccounts(e.target.value);
+        });
+
+        // Inisialisasi Aplikasi Saat Halaman Dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+            checkPersistedSession(); // Cek login sebelumnya
+        });
+
+    </script>
+</body>
+</html>
